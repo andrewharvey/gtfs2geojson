@@ -1,0 +1,48 @@
+#!/usr/bin/env node
+
+var os = require("os"),
+    fs = require("fs"),
+    path = require("path"),
+    gtfs2geojson = require('../');
+
+/* source directory if provided otherwise use current directory */
+var source = (process.argv.length > 2) ? process.argv[2] : '.';
+
+/* destination if provided otherwise use source directory */
+var destination = (process.argv.length > 3) ? process.argv[3] : source;
+
+/* stops */
+var stopsSourcePath = path.join(source, 'stops.txt');
+fs.stat(stopsSourcePath, function (err, stat) {
+    if (!err) {
+        var stops = fs.createReadStream(stopsSourcePath);
+        gtfs2geojson.stops(stops, function (geojson) {
+            fs.writeFile(path.join(destination, 'stops.geojson'), JSON.stringify(geojson) + os.EOL, function(error) {
+                if (error) {
+                    console.err('Unable to write stops.geojson');
+                    throw error;
+                }
+            });
+        });
+    }else{
+        console.err('stops.txt not found at ' + stopsSourcePath);
+    }
+});
+
+/* shapes */
+var shapesSourcePath = path.join(source, 'shapes.txt');
+fs.stat(shapesSourcePath, function (err, stat) {
+    if (!err) {
+        var shapes = fs.createReadStream(shapesSourcePath);
+        gtfs2geojson.lines(shapes, function (geojson) {
+            fs.writeFile(path.join(destination, 'shapes.geojson'), JSON.stringify(geojson) + os.EOL, function(error) {
+                if (error) {
+                    console.err('Unable to write shapes.geojson');
+                    throw error;
+                }
+            });
+        });
+    }else{
+        console.err('shapes.txt not found at ' + shapesSourcePath);
+    }
+});
