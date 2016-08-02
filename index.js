@@ -47,7 +47,9 @@ var gtfs2geojson = {
                             features.push({
                                 type: 'Feature',
                                 id: shape_id,
-                                properties: null,
+                                properties: {
+                                    shape_id: shape_id
+                                },
                                 geometry: {
                                     type: 'LineString',
                                     coordinates: coordinates
@@ -86,7 +88,9 @@ var gtfs2geojson = {
                             return {
                                 type: 'Feature',
                                 id: id,
-                                properties: null,
+                                properties: {
+                                    shape_id: shape_id
+                                },
                                 geometry: {
                                     type: 'LineString',
                                     coordinates: shapes[id].sort(function(a, b) {
@@ -135,6 +139,7 @@ var gtfs2geojson = {
                             type: 'Feature',
                             id: stops[id].stop_id,
                             properties: {
+                                stop_id: stops[id].stop_id,
                                 stop_name: stops[id].stop_name,
                             },
                             geometry: {
