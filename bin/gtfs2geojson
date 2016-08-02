@@ -3,13 +3,73 @@
 var os = require("os"),
     fs = require("fs"),
     path = require("path"),
+    commandLineArgs = require("command-line-args"),
+    commandLineUsage = require("command-line-usage"),
     gtfs2geojson = require('../');
 
+/* command line arguments */
+var options = [
+    {
+        name: 'help',
+        alias: 'h',
+        type: Boolean,
+        defaultValue: false
+    },
+    {
+        name: 'shapes-assume-ordered',
+        type: Boolean,
+        defaultValue: false,
+        description: "If provided shapes.txt is assumed to be ordered by shape_id and shape_pt_sequence as this reduces memory usage and processing time. However since the GTFS spec doesn't mandate this ordering, the default is false."
+    },
+    {
+        name: 'input',
+        alias: 'i',
+        type: String,
+        defaultOption: true,
+        typeLabel: '[underline]{path}',
+        description: 'Path to directory containing GTFS .txt files. Defaults to current directory.'
+    },
+    {
+        name: 'output',
+        alias: 'o',
+        type: String,
+        typeLabel: '[underline]{path}',
+        description: 'Output directory. Defaults to the [bold]{input} directory.'
+    }
+    ];
+
+/* help page */
+var usage = [
+    {
+        header: 'NAME',
+        content: 'gtfs2geojson - Converts GTFS stops.txt and shapes.txt to GeoJSON'
+    },
+    {
+        header: 'SYNOPSIS',
+        content: [
+            'gtfs2geojson [--shapes-assume-ordered] [--output output_path] [source_path]'
+        ]
+    },
+    {
+        header: 'OPTIONS',
+        optionList: options
+    }
+    ];
+
+/* parse arguments */
+var args = commandLineArgs(options);
+
+/* if --help print usage and exit */
+if (args.help) {
+    console.log(commandLineUsage(usage));
+    process.exit();
+}
+
 /* source directory if provided otherwise use current directory */
-var source = (process.argv.length > 2) ? process.argv[2] : '.';
+var source = args.input || '.';
 
 /* destination if provided otherwise use source directory */
-var destination = (process.argv.length > 3) ? process.argv[3] : source;
+var destination = args.output || source;
 
 /* stops */
 var stopsSourcePath = path.join(source, 'stops.txt');
@@ -19,13 +79,13 @@ fs.stat(stopsSourcePath, function (err, stat) {
         gtfs2geojson.stops(stops, function (geojson) {
             fs.writeFile(path.join(destination, 'stops.geojson'), JSON.stringify(geojson) + os.EOL, function(error) {
                 if (error) {
-                    console.err('Unable to write stops.geojson');
+                    console.error('Unable to write stops.geojson');
                     throw error;
                 }
             });
         });
     }else{
-        console.err('stops.txt not found at ' + stopsSourcePath);
+        console.error('stops.txt not found at ' + stopsSourcePath);
     }
 });
 
@@ -37,12 +97,12 @@ fs.stat(shapesSourcePath, function (err, stat) {
         gtfs2geojson.lines(shapes, function (geojson) {
             fs.writeFile(path.join(destination, 'shapes.geojson'), JSON.stringify(geojson) + os.EOL, function(error) {
                 if (error) {
-                    console.err('Unable to write shapes.geojson');
+                    console.error('Unable to write shapes.geojson');
                     throw error;
                 }
             });
-        });
+        }, args['shapes-assume-ordered']);
     }else{
-        console.err('shapes.txt not found at ' + shapesSourcePath);
+        console.error('shapes.txt not found at ' + shapesSourcePath);
     }
 });

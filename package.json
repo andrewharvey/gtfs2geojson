@@ -23,6 +23,8 @@
   },
   "dependencies": {
     "assert": "^1.4.1",
+    "command-line-args": "^3.0.1",
+    "command-line-usage": "^3.0.3",
     "fast-csv": "^2.1.0"
   }
 }

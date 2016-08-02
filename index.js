@@ -10,14 +10,22 @@ var gtfs2geojson = {
      *
      * @param {string|fs.ReadStream} gtfs csv or readable stream content of shapes.txt
      * @param {function} callback callback function with the geojson featurecollection as the first argument
+     * @param {boolean} [assumeOrdered] If true the shapes.txt is assumed to be ordered by shape_id and
+     *     shape_pt_sequence as this reduces memory usage and processing time. However since the GTFS spec
+     *     doesn't mandate this ordering, the default is false. If assumeOrdered is true but an out of order
+     *     line is found, an Error will be thrown.
      */
-    lines: function(gtfs, callback) {
+    lines: function(gtfs, callback, assumeOrdered) {
+        // variables for assumeOrdered is true
         var shape_id = null;
         var coordinates = [];
         var shape_pt_sequence = null;
         var shape_ids_seen = {}
 
         var features = [];
+
+        // variables for assumeOrdered is false
+        var csvData = [];
 
         var parser;
         if (gtfs instanceof fs.ReadStream) {
@@ -28,40 +36,72 @@ var gtfs2geojson = {
 
         parser
             .on("data", function(data){
-                if (data.shape_id != shape_id) {
-                    // new shape
-                    assert.ok(!(data.shape_id in shape_ids_seen), 'shape_id out of order: ' + data.shape_id);
-                    shape_ids_seen[data.shape_id] = true;
+                if (assumeOrdered) {
+                    if (data.shape_id != shape_id) {
+                        // new shape
+                        assert.ok(!(data.shape_id in shape_ids_seen), 'shape_id out of order: ' + data.shape_id);
+                        shape_ids_seen[data.shape_id] = true;
 
-                    // commit the previous shape to features, if this isn't the first call
-                    if (shape_id !== null) {
-                        features.push({
-                            type: 'Feature',
-                            id: shape_id,
-                            properties: null,
-                            geometry: {
-                                type: 'LineString',
-                                coordinates: coordinates
-                            }
-                        });
+                        // commit the previous shape to features, if this isn't the first call
+                        if (shape_id !== null) {
+                            features.push({
+                                type: 'Feature',
+                                id: shape_id,
+                                properties: null,
+                                geometry: {
+                                    type: 'LineString',
+                                    coordinates: coordinates
+                                }
+                            });
+                        }
+
+                        // reset shape variables
+                        shape_id = data.shape_id;
+                        shape_pt_sequence = null;
+                        coordinates = [];
                     }
 
-                    // reset shape variables
-                    shape_id = data.shape_id;
-                    shape_pt_sequence = null;
-                    coordinates = [];
+                    assert.ok(shape_pt_sequence === null || data.shape_pt_sequence > shape_pt_sequence, 'shape_pt_sequence out of order: shape_id=' + data.shape_id + ' shape_pt_sequence=' + data.shape_pt_sequence);
+                    shape_pt_sequence = parseInt(data.shape_pt_sequence);
+
+                    coordinates.push([parseFloat(data.shape_pt_lon), parseFloat(data.shape_pt_lat)]);
+                }else{
+                    csvData.push(data);
                 }
-
-                assert.ok(shape_pt_sequence === null || data.shape_pt_sequence > shape_pt_sequence, 'shape_pt_sequence out of order: shape_id=' + data.shape_id + ' shape_pt_sequence=' + data.shape_pt_sequence);
-                shape_pt_sequence = parseInt(data.shape_pt_sequence);
-
-                coordinates.push([parseFloat(data.shape_pt_lon), parseFloat(data.shape_pt_lat)]);
             })
             .on("end", function(){
-                callback({
-                    type: 'FeatureCollection',
-                    features: features
-                });
+                if (assumeOrdered) {
+                    callback({
+                        type: 'FeatureCollection',
+                        features: features
+                    });
+                }else{
+                    var shapes = csvData.reduce(function(memo, row) {
+                        memo[row.shape_id] = (memo[row.shape_id] || []).concat(row);
+                        return memo;
+                    }, {});
+                    callback({
+                        type: 'FeatureCollection',
+                        features: Object.keys(shapes).map(function(id) {
+                            return {
+                                type: 'Feature',
+                                id: id,
+                                properties: null,
+                                geometry: {
+                                    type: 'LineString',
+                                    coordinates: shapes[id].sort(function(a, b) {
+                                        return +a.shape_pt_sequence - b.shape_pt_sequence;
+                                    }).map(function(coord) {
+                                        return [
+                                            parseFloat(coord.shape_pt_lon),
+                                            parseFloat(coord.shape_pt_lat)
+                                        ];
+                                    })
+                                }
+                            };
+                        })
+                    });
+                }
             });
     },
 
