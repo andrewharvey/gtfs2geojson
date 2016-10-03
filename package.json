@@ -3,6 +3,7 @@
   "version": "2.0.0",
   "description": "convert gtfs data into geojson files",
   "main": "index.js",
+  "bin": "bin/gtfs2geojson",
   "directories": {
     "test": "test"
   },
