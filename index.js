@@ -89,7 +89,7 @@ var gtfs2geojson = {
                                 type: 'Feature',
                                 id: id,
                                 properties: {
-                                    shape_id: shape_id
+                                    shape_id: id
                                 },
                                 geometry: {
                                     type: 'LineString',
