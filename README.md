@@ -21,6 +21,8 @@ If `--shapes-assume-ordered` is provided the `shapes.txt` is assumed to be order
 However since the GTFS spec doesn't mandate this ordering, the default is to not assume
 any ordering.
 
+You may want to set the heap size by invoking with something like `node --max_old_space_size=4096 ./gtfs2geojson` (which is 4GB) to prevent errors like `FATAL ERROR: CALL_AND_RETRY_LAST Allocation failed - JavaScript heap out of memory`.
+
 
 ## API
 
